@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>កម្មវិធីគ្រប់គ្រងតំណគេហទំព័រ</title>
-    <link rel="icon" type="image/png" href="https://img.uxcel.com/lessons/links-accessibility-1705345911300-2x.svg">
+    
     <!-- 1. Tải Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
     
@@ -66,6 +66,7 @@
         const db = firebase.database(app);
 
         // --- រូបតំណាង (Icons) ជា SVG ---
+        // ( ... រូបតំណាងទាំងអស់នៅដដែល ... )
         const PlusIcon = () => (
           <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v12m6-6H6" />
@@ -117,10 +118,62 @@
         const RemoveDeviceIcon = () => (
            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zM7 10a1 1 0 11-2 0 1 1 0 012 0zm10 0a1 1 0 11-2 0 1 1 0 012 0zm-5 4a1 1 0 100 2 1 1 0 000-2zm-6.828 2.828A4 4 0 017.172 15h9.656a4 4 0 012.828 6.828" /></svg>
         );
+        
+        // [FIX] Icon ថ្មី សម្រាប់ Modal
+        const WarningIcon = () => (
+          <svg className="h-6 w-6 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+          </svg>
+        );
         // --- ចប់ ផ្នែករូបតំណាង ---
         
+        // [FIX] Component ថ្មី សម្រាប់ សួរបញ្ជាក់ (Confirm Modal)
+        function ConfirmModal({ isOpen, title, message, onConfirm, onCancel }) {
+          if (!isOpen) return null;
+
+          return (
+            <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+              {/* Overlay */}
+              <div className="fixed inset-0 bg-black opacity-50" onClick={onCancel}></div>
+              
+              {/* Modal Content */}
+              <div className="relative bg-white rounded-lg shadow-xl w-full max-w-md p-6">
+                <div className="flex items-start space-x-3">
+                  <div className="flex-shrink-0 flex items-center justify-center h-12 w-12 rounded-full bg-red-100">
+                    <WarningIcon />
+                  </div>
+                  <div className="flex-1">
+                    <h3 className="text-lg font-bold text-gray-900">{title}</h3>
+                    <p className="text-sm text-gray-600 mt-2">{message}</p>
+                  </div>
+                </div>
+                <div className="mt-6 flex justify-end space-x-3">
+                  <button
+                    type="button"
+                    onClick={onCancel}
+                    className="px-4 py-2 bg-gray-200 text-gray-800 rounded-md hover:bg-gray-300 font-semibold"
+                  >
+                    បោះបង់
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      onConfirm();
+                      onCancel(); // បិទ Modal បន្ទាប់ពីចុចយល់ព្រម
+                    }}
+                    className="px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700 font-semibold"
+                  >
+                    យល់ព្រម
+                  </button>
+                </div>
+              </div>
+            </div>
+          );
+        }
+
         // --- Component: LoginForm ---
         function LoginForm({ onLogin }) {
+          // ... (កូដមិនផ្លាស់ប្ដូរ) ...
           const [username, setUsername] = useState('');
           const [password, setPassword] = useState('');
           const [error, setError] = useState('');
@@ -132,7 +185,6 @@
             setError('');
             setLoading(true);
 
-            // 1. ពិនិត្យ Admin
             db.ref('admins').once('value')
               .then((adminSnapshot) => {
                 const adminsData = adminSnapshot.val();
@@ -147,7 +199,6 @@
                   }
                 }
                 
-                // 2. ពិនិត្យ User (Author)
                 db.ref('authors').once('value')
                   .then((authorSnapshot) => {
                     const authorsData = authorSnapshot.val();
@@ -159,19 +210,13 @@
                         if (author.name === username && author.password === password) {
                           userFound = true;
                           
-                          // [FIX] កែសម្រួលតក្កវិជ្ជា (Logic) សម្រាប់ Single Device
-                          // 1. អានតម្លៃ Setting ពី Admin
                           const enforce = (author.enforceSingleDevice === undefined) ? true : author.enforceSingleDevice;
                           
                           if (author.isBlocked === true) {
                             setError('គណនីរបស់អ្នកត្រូវបានបិទ។ សូមទាក់ទង Admin។');
-                          
-                          // 2. ពិនិត្យ isLoggedIn (true) តែនៅពេល enforce (true)
                           } else if (enforce && author.isLoggedIn === true) {
                             setError('គណនីនេះកំពុងប្រើប្រាស់លើឧបករណ៍ផ្សេង។');
-
                           } else {
-                            // 3. អនុញ្ញាតឱ្យ Login (បើ enforce = false ឬ isLoggedIn = false)
                             onLogin({ 
                               name: author.name, 
                               role: 'user',
@@ -194,7 +239,6 @@
                   .finally(() => {
                     setLoading(false);
                   });
-
               })
               .catch((err) => {
                 console.error(err);
@@ -276,6 +320,7 @@
         
         // --- Component: AddLinkForm ---
         function AddLinkForm({ authorId, onAddLink, canAddLink }) {
+          // ... (កូដមិនផ្លាស់ប្ដូរ) ...
           const [title, setTitle] = useState('');
           const [url, setUrl] = useState('');
 
@@ -332,7 +377,8 @@
         }
         
         // --- Component ថ្មី: LinkItem (សម្រាប់ Edit Link) ---
-        function LinkItem({ authorId, link, linkId, canEdit, canDelete, onUpdateLink, onDeleteLink }) {
+        function LinkItem({ authorId, link, linkId, canEdit, canDelete, onUpdateLink, onDeleteLink, onShowModal }) {
+          // ... (កូដកែសម្រួល Link មិនផ្លាស់ប្ដូរ) ...
           const [isEditing, setIsEditing] = useState(false);
           const [editTitle, setEditTitle] = useState(link.title);
           const [editUrl, setEditUrl] = useState(link.url);
@@ -360,6 +406,15 @@
             const date = new Date(isoString);
             const options = { day: 'numeric', month: 'short', year: 'numeric', hour: 'numeric', minute: '2-digit', hour12: true };
             return new Intl.DateTimeFormat('km-KH', options).format(date);
+          };
+          
+          // [FIX] បន្ថែម onShowModal ពេលលុប
+          const handleDelete = () => {
+             onShowModal(
+                'លុបតំណ?',
+                `តើអ្នកប្រាកដទេថាចង់លុបតំណ "${link.title}"?`,
+                () => onDeleteLink(authorId, link.id)
+             );
           };
 
           if (isEditing) {
@@ -406,7 +461,7 @@
                   </button>
                 )}
                 {canDelete && (
-                  <button onClick={() => onDeleteLink(authorId, link.id)} className="text-gray-400 hover:text-red-500 p-1" title="លុបតំណនេះ">
+                  <button onClick={handleDelete} className="text-gray-400 hover:text-red-500 p-1" title="លុបតំណនេះ">
                     <TrashIcon />
                   </button>
                 )}
@@ -427,8 +482,10 @@
           onSetPassword,
           onUpdateLink,
           onUpdatePermissions,
-          onForceLogout 
+          onForceLogout,
+          onShowModal // [FIX] ទទួល onShowModal
         }) {
+          // ... (កូដ State មិនផ្លាស់ប្ដូរ) ...
           const links = author.links || {};
           const [isEditing, setIsEditing] = useState(false);
           const [editedName, setEditedName] = useState(author.name);
@@ -479,20 +536,59 @@
             }
           };
           
+          // [FIX] កែសម្រួល Actions ទាំងអស់ឱ្យប្រើ onShowModal
+          
           const handlePermissionChange = (permKey, value) => {
              onUpdatePermissions(authorId, { [`permissions/${permKey}`]: value });
           };
           
+          const handleDeleteRequest = () => {
+            onShowModal(
+              'លុបអ្នកអភិវឌ្ឍន៍?',
+              `តើអ្នកប្រាកដទេថាចង់លុប ${author.name}? ទិន្នន័យតំណទាំងអស់នឹងត្រូវបាត់បង់។`,
+              () => onDeleteAuthor(authorId)
+            );
+          };
+          
+          const handleForceLogoutRequest = () => {
+             onShowModal(
+                'ដកឧបករណ៍ចេញ?',
+                `តើអ្នកប្រាកដទេថាចង់ដក ${author.name} ចេញពីឧបករណ៍ទាំងអស់? ពួកគេនឹងត្រូវ Login ឡើងវិញ។`,
+                () => onForceLogout(authorId)
+             );
+          };
+          
           const handleBlockToggle = (value) => {
-              onUpdatePermissions(authorId, { 'isBlocked': value, 'isLoggedIn': false });
+            const actionText = value ? "បិទ" : "បើក";
+            onShowModal(
+              `${actionText}គណនី?`,
+              `តើអ្នកប្រាកដទេថាចង់${actionText}គណនី ${author.name}?`,
+              () => {
+                const updates = { 'isBlocked': value };
+                if (value === true) {
+                  updates.isLoggedIn = false; // បង្ខំ Log out ពេល Block
+                  updates.forceLogoutTimestamp = Date.now(); // បន្ថែម timestamp
+                }
+                onUpdatePermissions(authorId, updates);
+              }
+            );
           };
           
           const handleEnforceToggle = (value) => {
-              onUpdatePermissions(authorId, { 'enforceSingleDevice': value });
+            const actionText = value ? "កំណត់ត្រឹម ១ ឧបករណ៍" : "អនុញ្ញាតឱ្យប្រើច្រើនឧបករណ៍";
+            onShowModal(
+              'ផ្លាស់ប្ដូរការកំណត់?',
+              `តើអ្នកប្រាកដទេថាចង់ ${actionText} សម្រាប់ ${author.name}?`,
+              () => {
+                onUpdatePermissions(authorId, { 'enforceSingleDevice': value });
+              }
+            );
           };
+          
 
           return (
             <div className={`bg-white p-5 rounded-xl shadow-lg border border-gray-200 mb-6 transition-all duration-300 ${isBlocked ? 'opacity-50 bg-gray-100' : ''}`}>
+              {/* ... (UI កែសម្រួលឈ្មោះ មិនផ្លាស់ប្ដូរ) ... */}
               <div className="flex justify-between items-center mb-4">
                 {isEditing && userRole === 'admin' ? (
                   <div className="flex-grow flex items-center space-x-2">
@@ -514,9 +610,10 @@
                   </div>
                 )}
                 
+                {/* [FIX] ប្រើ handleDeleteRequest */}
                 {!isEditing && userRole === 'admin' && (
                   <button
-                    onClick={() => onDeleteAuthor(authorId)}
+                    onClick={handleDeleteRequest} 
                     className="flex items-center space-x-1 text-red-500 hover:text-red-700 hover:bg-red-100 p-2 rounded-md transition duration-200"
                     title="លុបអ្នកអភិវឌ្ឍន៍នេះ"
                   >
@@ -526,6 +623,7 @@
                 )}
               </div>
               
+              {/* [FIX] ប្រើ handleForceLogoutRequest */}
               {userRole === 'admin' && (
                 <div className="flex items-center space-x-2 mb-4">
                   <span className={`h-3 w-3 rounded-full ${isLoggedIn ? 'bg-green-500' : 'bg-gray-400'}`}></span>
@@ -534,7 +632,7 @@
                   </span>
                   {isLoggedIn && (
                      <button 
-                        onClick={() => onForceLogout(authorId)}
+                        onClick={handleForceLogoutRequest}
                         className="text-xs text-blue-600 hover:text-blue-800 p-1 bg-blue-100 rounded-md ml-4"
                      >
                         ដកឧបករណ៍ចេញ
@@ -545,6 +643,7 @@
               
               {userRole === 'admin' && (
                 <div className="space-y-3 mb-4 p-4 border border-gray-200 rounded-lg bg-gray-50">
+                  {/* ... (UI កំណត់ពាក្យសម្ងាត់ មិនផ្លាស់ប្ដូរ) ... */}
                   <div>
                     {isSettingPassword ? (
                       <div className="flex flex-col sm:flex-row items-stretch sm:items-center sm:space-x-2 space-y-2 sm:space-y-0">
@@ -576,6 +675,7 @@
                     )}
                   </div>
                   
+                  {/* [FIX] ប្រើ handleEnforceToggle */}
                   <div className="flex items-center justify-between p-2 bg-blue-50 rounded-md">
                     <label htmlFor={`enforce-${authorId}`} className="font-semibold text-blue-700">កំណត់ត្រឹម ១ ឧបករណ៍</label>
                     <div className="relative inline-block w-10 mr-2 align-middle select-none transition duration-200 ease-in">
@@ -594,6 +694,7 @@
                     </div>
                   </div>
                   
+                  {/* [FIX] ប្រើ handleBlockToggle */}
                   <div className="flex items-center justify-between p-2 bg-red-50 rounded-md">
                     <label htmlFor={`block-${authorId}`} className="font-semibold text-red-700">បិទគណនី</label>
                     <div className="relative inline-block w-10 mr-2 align-middle select-none transition duration-200 ease-in">
@@ -612,6 +713,7 @@
                     </div>
                   </div>
                   
+                  {/* ... (UI កំណត់សិទ្ធិ មិនផ្លាស់ប្ដូរ) ... */}
                   <div className="space-y-1">
                       <h4 className="font-semibold text-gray-700">កំណត់សិទ្ធិ</h4>
                       <div className="flex flex-col sm:flex-row sm:items-center sm:space-x-4 space-y-2 sm:space-y-0 items-start">
@@ -645,6 +747,7 @@
                       canDelete={perms.canDeleteLink}
                       onUpdateLink={onUpdateLink}
                       onDeleteLink={onDeleteLink}
+                      onShowModal={onShowModal} // [FIX] បញ្ជូន prop
                     />
                   ))}
                 </ul>
@@ -662,7 +765,7 @@
         }
 
         // --- Component: LinkManager ---
-        function LinkManager({ user, onLogout }) {
+        function LinkManager({ user, onLogout, onShowModal }) { // [FIX] ទទួល onShowModal
           const [authors, setAuthors] = useState({});
           const [loading, setLoading] = useState(true);
           
@@ -685,11 +788,31 @@
               if (user.role === 'admin') {
                 setAuthors(data || {}); 
               } else if (user.role === 'user') {
+                if (!data) {
+                    // User នេះត្រូវបាន Admin លុប
+                    alert("គណនីរបស់អ្នកត្រូវបានលុបដោយ Admin។");
+                    onLogout();
+                    return;
+                }
+                  
                 setAuthors(data ? { [user.id]: data } : {});
                 
                 if (data && data.permissions) {
                    user.permissions = data.permissions;
+                   // អាប់ដេត localStorage ដែរ
+                   try {
+                       localStorage.setItem('loggedInUser', JSON.stringify(user));
+                   } catch (e) {}
                 }
+                
+                // [FIX] ពិនិត្យ Force Logout Timestamp
+                const serverTimestamp = data.forceLogoutTimestamp || 0;
+                if (serverTimestamp > user.loginTime) {
+                    alert("អ្នកត្រូវបាន Admin ដកចេញពីឧបករណ៍នេះ។");
+                    onLogout();
+                    return;
+                }
+                
                 if (data && data.isBlocked === true) {
                     alert("គណនីរបស់អ្នកត្រូវបានបិទដោយ Admin។");
                     onLogout();
@@ -709,7 +832,7 @@
           const handleAddAuthor = (e) => {
             e.preventDefault();
             if (!newAuthorName.trim() || !newAuthorPassword.trim()) {
-              alert("សូមបញ្ចូលទាំងឈ្មោះ និងពាក្យសម្ងាត់");
+              alert("សូមបញ្ចូលទាំងឈ្មោះ និងពាក្យសម្ងាត់"); // ប្រើ alert ធម្មតាបាន ព្រោះ Form នេះ Admin ប្រើ
               return;
             }
             const authorsListRef = db.ref('authors');
@@ -720,6 +843,7 @@
               isBlocked: false,
               isLoggedIn: false,
               enforceSingleDevice: true, 
+              forceLogoutTimestamp: 0, // [FIX] បន្ថែម field ថ្មី
               permissions: {
                 canAddLink: true,
                 canEditLink: true,
@@ -770,9 +894,13 @@
             authorRef.update(permUpdates).catch((error) => console.error("Error updating permissions: ", error));
           };
           
+          // [FIX] កែសម្រួល Force Logout
           const handleForceLogout = (authorId) => {
             const authorRef = db.ref(`authors/${authorId}`);
-            authorRef.update({ isLoggedIn: false }); 
+            authorRef.update({ 
+                isLoggedIn: false,
+                forceLogoutTimestamp: Date.now() // កំណត់ Timestamp
+            }); 
           };
           
           const authorIds = Object.keys(authors);
@@ -863,6 +991,7 @@
                             onSetPassword={handleSetPassword}
                             onUpdatePermissions={handleUpdatePermissions}
                             onForceLogout={handleForceLogout} 
+                            onShowModal={onShowModal} // [FIX] បញ្ជូន prop
                           />
                         ))}
                       </div>
@@ -892,6 +1021,17 @@
             }
             return null;
           });
+          
+          // [FIX] បន្ថែម State សម្រាប់ Modal
+          const [modal, setModal] = useState({ isOpen: false, title: '', message: '', onConfirm: null });
+
+          const handleShowModal = (title, message, onConfirm) => {
+            setModal({ isOpen: true, title, message, onConfirm });
+          };
+          
+          const handleCloseModal = () => {
+             setModal({ isOpen: false, title: '', message: '', onConfirm: null });
+          };
 
           useEffect(() => {
             let userPresenceRef = null;
@@ -914,11 +1054,13 @@
 
           const handleLogin = (user) => {
             try {
-              localStorage.setItem('loggedInUser', JSON.stringify(user));
+              // [FIX] រក្សាទុក loginTime នៅពេល Login
+              const userToSave = { ...user, loginTime: Date.now() };
+              localStorage.setItem('loggedInUser', JSON.stringify(userToSave));
+              setLoggedInUser(userToSave);
             } catch (e) {
               console.error("Failed to save user to localStorage", e);
             }
-            setLoggedInUser(user);
           };
 
           const handleLogout = () => {
@@ -942,11 +1084,28 @@
             }
           };
 
-          if (!loggedInUser) {
-            return <LoginForm onLogin={handleLogin} />;
-          }
-
-          return <LinkManager user={loggedInUser} onLogout={handleLogout} />;
+          return (
+            <Fragment>
+              {/* [FIX] Render Modal នៅក្នុង Root */}
+              <ConfirmModal 
+                 isOpen={modal.isOpen}
+                 title={modal.title}
+                 message={modal.message}
+                 onConfirm={modal.onConfirm}
+                 onCancel={handleCloseModal}
+              />
+            
+              {!loggedInUser ? (
+                <LoginForm onLogin={handleLogin} />
+              ) : (
+                <LinkManager 
+                   user={loggedInUser} 
+                   onLogout={handleLogout} 
+                   onShowModal={handleShowModal} // [FIX] បញ្ជូន prop
+                />
+              )}
+            </Fragment>
+          );
         }
 
         // 8. ចាប់ផ្ដើម Render កម្មវិធី React ទៅក្នុង <div id="root">
