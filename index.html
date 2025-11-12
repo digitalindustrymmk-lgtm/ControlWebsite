@@ -116,7 +116,7 @@
         );
         // --- ចប់ ផ្នែករូបតំណាង ---
         
-        // --- Component: LoginForm (បានកែប្រែ) ---
+        // --- Component: LoginForm ---
         function LoginForm({ onLogin }) {
           const [username, setUsername] = useState('');
           const [password, setPassword] = useState('');
@@ -139,7 +139,7 @@
                     if (admin.username === username && admin.password === password) {
                       onLogin({ name: admin.username, role: 'admin' });
                       setLoading(false);
-                      return; // Admin ចូលបាន, ចប់ដំណើរការ
+                      return;
                     }
                   }
                 }
@@ -156,16 +156,13 @@
                         if (author.name === username && author.password === password) {
                           userFound = true;
                           
-                          // [FIX] ពិនិត្យ isBlocked
                           if (author.isBlocked === true) {
                             setError('គណនីរបស់អ្នកត្រូវបានបិទ។ សូមទាក់ទង Admin។');
                             
-                          // [FIX] ពិនិត្យ isLogged In
                           } else if (author.isLoggedIn === true) {
                             setError('គណនីនេះកំពុងប្រើប្រាស់លើឧបករណ៍ផ្សេង។');
 
                           } else {
-                            // អនុញ្ញាតឱ្យ Login
                             onLogin({ 
                               name: author.name, 
                               role: 'user',
@@ -480,7 +477,6 @@
           };
           
           const handleBlockToggle = (value) => {
-              // [FIX] នៅពេល Block User, កំណត់ isLoggedIn ទៅ false ដែរ
               onUpdatePermissions(authorId, { 'isBlocked': value, 'isLoggedIn': false });
           };
 
@@ -520,14 +516,15 @@
                 )}
               </div>
               
-              {/* ... (UI Admin Permissions មិនផ្លាស់ប្ដូរ) ... */}
+              {/* [FIX] UI Admin Permissions (កែសម្រួលសម្រាប់ Mobile) */}
               {userRole === 'admin' && (
                 <div className="space-y-3 mb-4 p-4 border border-gray-200 rounded-lg bg-gray-50">
                   {/* Password */}
                   <div>
                     {isSettingPassword ? (
-                      <div className="flex items-center space-x-2">
-                        <KeyIcon />
+                      // [FIX] កែ layout សម្រាប់ mobile
+                      <div className="flex flex-col sm:flex-row items-stretch sm:items-center sm:space-x-2 space-y-2 sm:space-y-0">
+                        <KeyIcon className="hidden sm:block" />
                         <div className="relative flex-grow">
                           <input 
                             type={showNewPassword ? 'text' : 'password'}
@@ -577,7 +574,8 @@
                   {/* Other Permissions */}
                   <div className="space-y-1">
                       <h4 className="font-semibold text-gray-700">កំណត់សិទ្ធិ (Permissions)</h4>
-                      <div className="flex items-center space-x-4">
+                      {/* [FIX] កែ layout សម្រាប់ mobile */}
+                      <div className="flex flex-col sm:flex-row sm:items-center sm:space-x-4 space-y-2 sm:space-y-0 items-start">
                         <label className="flex items-center space-x-2">
                             <input type="checkbox" className="h-5 w-5" checked={perms.canAddLink} onChange={(e) => handlePermissionChange('canAddLink', e.target.checked)} />
                             <span>អនុញ្ញាតឱ្យបន្ថែម</span>
@@ -624,7 +622,7 @@
           );
         }
 
-        // --- Component: LinkManager (បានកែប្រែ) ---
+        // --- Component: LinkManager ---
         function LinkManager({ user, onLogout }) {
           const [authors, setAuthors] = useState({});
           const [loading, setLoading] = useState(true);
@@ -650,13 +648,12 @@
               } else if (user.role === 'user') {
                 setAuthors(data ? { [user.id]: data } : {});
                 
-                // [FIX] ពិនិត្យបន្តផ្ទាល់ ពេល Admin បិទគណនី
                 if (data && data.permissions) {
                    user.permissions = data.permissions;
                 }
                 if (data && data.isBlocked === true) {
                     alert("គណនីរបស់អ្នកត្រូវបានបិទដោយ Admin។");
-                    onLogout(); // Log user ចេញ
+                    onLogout();
                 }
               }
               setLoading(false);
@@ -668,25 +665,22 @@
             return () => {
               authorsRef.off('value', listener);
             };
-          }, [user, onLogout]); // [FIX] បន្ថែម onLogout ទៅ dependency array
+          }, [user, onLogout]);
 
-          // [FIX] បន្ថែម Function បង្កើត User ថ្មី
+          // ... (Functions ផ្សេងទៀត មិនផ្លាស់ប្ដូរ) ...
           const handleAddAuthor = (e) => {
             e.preventDefault();
             if (!newAuthorName.trim() || !newAuthorPassword.trim()) {
               alert("សូមបញ្ចូលទាំងឈ្មោះ និងពាក្យសម្ងាត់");
               return;
             }
-
             const authorsListRef = db.ref('authors');
             const newAuthorRef = authorsListRef.push(); 
-            
-            // [FIX] កំណត់ Default សម្រាប់ User ថ្មី
             newAuthorRef.set({
               name: newAuthorName,
               password: newAuthorPassword,
               isBlocked: false,
-              isLoggedIn: false, // [FIX] កំណត់ isLoggedIn
+              isLoggedIn: false,
               permissions: {
                 canAddLink: true,
                 canEditLink: true,
@@ -700,8 +694,6 @@
             })
             .catch((error) => console.error("Error adding author: ", error));
           };
-
-          // ... (Functions ផ្សេងទៀត មិនផ្លាស់ប្ដូរ) ...
           const handleDeleteAuthor = (authorId) => {
             const authorRef = db.ref(`authors/${authorId}`);
             authorRef.remove().catch((error) => console.error("Error deleting author: ", error));
@@ -848,7 +840,19 @@
         
         // --- Component: MainApp (បានកែប្រែ) ---
         function MainApp() {
-          const [loggedInUser, setLoggedInUser] = useState(null);
+          // [FIX] កែ State ឱ្យអានពី localStorage មុន
+          const [loggedInUser, setLoggedInUser] = useState(() => {
+            try {
+              const savedUser = localStorage.getItem('loggedInUser');
+              if (savedUser) {
+                return JSON.parse(savedUser);
+              }
+            } catch (e) {
+              console.error("Failed to parse user from localStorage", e);
+              localStorage.removeItem('loggedInUser');
+            }
+            return null;
+          });
 
           // [FIX] បន្ថែម useEffect សម្រាប់គ្រប់គ្រង Presence
           useEffect(() => {
@@ -874,30 +878,35 @@
             };
           }, [loggedInUser]); // Run តែពេល loggedInUser ផ្លាស់ប្ដូរ
 
+          // [FIX] កែ handleLogin ឱ្យរក្សាទុកក្នុង localStorage
           const handleLogin = (user) => {
+            try {
+              localStorage.setItem('loggedInUser', JSON.stringify(user));
+            } catch (e) {
+              console.error("Failed to save user to localStorage", e);
+            }
             setLoggedInUser(user);
             // (useEffect ខាងលើ នឹងរត់ដោយស្វ័យប្រវត្តិ)
           };
 
+          // [FIX] កែ handleLogout ឱ្យលុបចេញពី localStorage
           const handleLogout = () => {
+            try {
+              localStorage.removeItem('loggedInUser');
+            } catch (e) {
+              console.error("Failed to remove user from localStorage", e);
+            }
+
             if (loggedInUser && loggedInUser.role === 'user') {
               const userPresenceRef = db.ref(`authors/${loggedInUser.id}/isLoggedIn`);
               
-              // 1. លុប onDisconnect handler
               userPresenceRef.onDisconnect().cancel();
               
-              // 2. កំណត់ Offline ភ្លាមៗ
               userPresenceRef.set(false)
-                .then(() => {
-                  // 3. បន្ទាប់ពីកំណត់ Offline រួច ទើប Logout
-                  setLoggedInUser(null);
-                })
-                .catch(() => {
-                  // បើមានបញ្ហា ក៏ Logout ដែរ
+                .finally(() => { // ប្រើ finally ធានាថា Logout
                   setLoggedInUser(null);
                 });
             } else {
-              // Admin Logout ធម្មតា
               setLoggedInUser(null);
             }
           };
