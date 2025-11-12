@@ -113,6 +113,10 @@
         const EyeOffIcon = () => (
           <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.875 18.875C12.024 19.943 9.879 19.943 8 18.875m0 0C6.12 17.807 4.024 16.03 2.458 12C3.732 7.943 7.523 5 12 5c1.118 0 2.204.17 3.223.484m2.62.978C19.33 7.547 20.89 9.61 21.542 12c-1.274 4.057-5.064 7-9.542 7-1.118 0-2.204-.17-3.223-.484m-2.62-.978l-3.02-3.02m0 0l-3.02 3.02" /></svg>
         );
+        
+        const RemoveDeviceIcon = () => (
+           <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zM7 10a1 1 0 11-2 0 1 1 0 012 0zm10 0a1 1 0 11-2 0 1 1 0 012 0zm-5 4a1 1 0 100 2 1 1 0 000-2zm-6.828 2.828A4 4 0 017.172 15h9.656a4 4 0 012.828 6.828" /></svg>
+        );
         // --- ចប់ ផ្នែករូបតំណាង ---
         
         // --- Component: LoginForm ---
@@ -128,7 +132,7 @@
             setError('');
             setLoading(true);
 
-            // 1. ពិនិត្យគណនី Admin ពី Firebase
+            // 1. ពិនិត្យ Admin
             db.ref('admins').once('value')
               .then((adminSnapshot) => {
                 const adminsData = adminSnapshot.val();
@@ -143,7 +147,7 @@
                   }
                 }
                 
-                // 2. បើរកមិនឃើញ Admin, បន្តរក User (Author)
+                // 2. ពិនិត្យ User (Author)
                 db.ref('authors').once('value')
                   .then((authorSnapshot) => {
                     const authorsData = authorSnapshot.val();
@@ -155,13 +159,19 @@
                         if (author.name === username && author.password === password) {
                           userFound = true;
                           
+                          // [FIX] កែសម្រួលតក្កវិជ្ជា (Logic) សម្រាប់ Single Device
+                          // 1. អានតម្លៃ Setting ពី Admin
+                          const enforce = (author.enforceSingleDevice === undefined) ? true : author.enforceSingleDevice;
+                          
                           if (author.isBlocked === true) {
                             setError('គណនីរបស់អ្នកត្រូវបានបិទ។ សូមទាក់ទង Admin។');
-                            
-                          } else if (author.isLoggedIn === true) {
+                          
+                          // 2. ពិនិត្យ isLoggedIn (true) តែនៅពេល enforce (true)
+                          } else if (enforce && author.isLoggedIn === true) {
                             setError('គណនីនេះកំពុងប្រើប្រាស់លើឧបករណ៍ផ្សេង។');
 
                           } else {
+                            // 3. អនុញ្ញាតឱ្យ Login (បើ enforce = false ឬ isLoggedIn = false)
                             onLogin({ 
                               name: author.name, 
                               role: 'user',
@@ -416,7 +426,8 @@
           onUpdateAuthorName,
           onSetPassword,
           onUpdateLink,
-          onUpdatePermissions
+          onUpdatePermissions,
+          onForceLogout 
         }) {
           const links = author.links || {};
           const [isEditing, setIsEditing] = useState(false);
@@ -440,8 +451,8 @@
           }
           
           const isBlocked = author.isBlocked || false;
-          // [FIX] បន្ថែម State ថ្មី សម្រាប់ isLoggedIn
           const isLoggedIn = author.isLoggedIn || false;
+          const enforceSingleDevice = author.enforceSingleDevice === undefined ? true : author.enforceSingleDevice;
 
           const sortedLinks = Object.keys(links)
             .map(key => ({ id: key, ...links[key] }))
@@ -475,6 +486,10 @@
           const handleBlockToggle = (value) => {
               onUpdatePermissions(authorId, { 'isBlocked': value, 'isLoggedIn': false });
           };
+          
+          const handleEnforceToggle = (value) => {
+              onUpdatePermissions(authorId, { 'enforceSingleDevice': value });
+          };
 
           return (
             <div className={`bg-white p-5 rounded-xl shadow-lg border border-gray-200 mb-6 transition-all duration-300 ${isBlocked ? 'opacity-50 bg-gray-100' : ''}`}>
@@ -489,7 +504,7 @@
                   <div className="flex items-center space-x-3">
                     <h3 className={`text-2xl font-bold ${isBlocked ? 'text-red-600' : 'text-indigo-700'}`}>
                         {author.name}
-                        {isBlocked && ' (Blocked)'}
+                        {isBlocked && ' (បានបិទ)'}
                     </h3>
                     {userRole === 'admin' && (
                       <button onClick={() => setIsEditing(true)} className="text-gray-400 hover:text-blue-600 p-1 rounded-full hover:bg-blue-100 transition duration-200" title="កែសម្រួលឈ្មោះ">
@@ -511,13 +526,20 @@
                 )}
               </div>
               
-              {/* [FIX] បន្ថែម UI សម្រាប់ Status (Admin តែប៉ុណ្ណោះ) */}
               {userRole === 'admin' && (
                 <div className="flex items-center space-x-2 mb-4">
                   <span className={`h-3 w-3 rounded-full ${isLoggedIn ? 'bg-green-500' : 'bg-gray-400'}`}></span>
                   <span className="text-sm font-medium text-gray-600">
-                    ស្ថានភាព៖ {isLoggedIn ? <span className="text-green-600">សកម្ម (Active)</span> : 'អសកម្ម (Offline)'}
+                    ស្ថានភាព៖ {isLoggedIn ? <span className="text-green-600">សកម្ម</span> : 'អសកម្ម'}
                   </span>
+                  {isLoggedIn && (
+                     <button 
+                        onClick={() => onForceLogout(authorId)}
+                        className="text-xs text-blue-600 hover:text-blue-800 p-1 bg-blue-100 rounded-md ml-4"
+                     >
+                        ដកឧបករណ៍ចេញ
+                     </button>
+                  )}
                 </div>
               )}
               
@@ -549,13 +571,31 @@
                     ) : (
                       <button onClick={() => setIsSettingPassword(true)} className="flex items-center space-x-2 text-sm text-blue-600 hover:text-blue-800 p-1">
                         <KeyIcon />
-                        <span>កំណត់/ប្ដូរពាក្យសម្ងាត់ (Password: {author.password ? '***' : 'មិនទាន់កំណត់'})</span>
+                        <span>កំណត់/ប្ដូរពាក្យសម្ងាត់ (ពាក្យសម្ងាត់៖ {author.password ? '***' : 'មិនទាន់កំណត់'})</span>
                       </button>
                     )}
                   </div>
                   
+                  <div className="flex items-center justify-between p-2 bg-blue-50 rounded-md">
+                    <label htmlFor={`enforce-${authorId}`} className="font-semibold text-blue-700">កំណត់ត្រឹម ១ ឧបករណ៍</label>
+                    <div className="relative inline-block w-10 mr-2 align-middle select-none transition duration-200 ease-in">
+                        <input 
+                            type="checkbox" 
+                            name={`enforce-${authorId}`}
+                            id={`enforce-${authorId}`}
+                            checked={enforceSingleDevice}
+                            onChange={(e) => handleEnforceToggle(e.target.checked)}
+                            className="toggle-checkbox absolute block w-6 h-6 rounded-full bg-white border-4 appearance-none cursor-pointer"
+                        />
+                        <label 
+                            htmlFor={`enforce-${authorId}`}
+                            className="toggle-label block overflow-hidden h-6 rounded-full bg-gray-300 cursor-pointer">
+                        </label>
+                    </div>
+                  </div>
+                  
                   <div className="flex items-center justify-between p-2 bg-red-50 rounded-md">
-                    <label htmlFor={`block-${authorId}`} className="font-semibold text-red-700">បិទគណនី (Block User)</label>
+                    <label htmlFor={`block-${authorId}`} className="font-semibold text-red-700">បិទគណនី</label>
                     <div className="relative inline-block w-10 mr-2 align-middle select-none transition duration-200 ease-in">
                         <input 
                             type="checkbox" 
@@ -573,7 +613,7 @@
                   </div>
                   
                   <div className="space-y-1">
-                      <h4 className="font-semibold text-gray-700">កំណត់សិទ្ធិ (Permissions)</h4>
+                      <h4 className="font-semibold text-gray-700">កំណត់សិទ្ធិ</h4>
                       <div className="flex flex-col sm:flex-row sm:items-center sm:space-x-4 space-y-2 sm:space-y-0 items-start">
                         <label className="flex items-center space-x-2">
                             <input type="checkbox" className="h-5 w-5" checked={perms.canAddLink} onChange={(e) => handlePermissionChange('canAddLink', e.target.checked)} />
@@ -679,6 +719,7 @@
               password: newAuthorPassword,
               isBlocked: false,
               isLoggedIn: false,
+              enforceSingleDevice: true, 
               permissions: {
                 canAddLink: true,
                 canEditLink: true,
@@ -727,6 +768,11 @@
           const handleUpdatePermissions = (authorId, permUpdates) => {
             const authorRef = db.ref(`authors/${authorId}`);
             authorRef.update(permUpdates).catch((error) => console.error("Error updating permissions: ", error));
+          };
+          
+          const handleForceLogout = (authorId) => {
+            const authorRef = db.ref(`authors/${authorId}`);
+            authorRef.update({ isLoggedIn: false }); 
           };
           
           const authorIds = Object.keys(authors);
@@ -816,6 +862,7 @@
                             onUpdateAuthorName={handleUpdateAuthorName}
                             onSetPassword={handleSetPassword}
                             onUpdatePermissions={handleUpdatePermissions}
+                            onForceLogout={handleForceLogout} 
                           />
                         ))}
                       </div>
@@ -831,7 +878,7 @@
           );
         }
         
-        // --- Component: MainApp (បានកែប្រែ) ---
+        // --- Component: MainApp ---
         function MainApp() {
           const [loggedInUser, setLoggedInUser] = useState(() => {
             try {
