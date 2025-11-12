@@ -66,7 +66,6 @@
         const db = firebase.database(app);
 
         // --- រូបតំណាង (Icons) ជា SVG ---
-        // ( ... រូបតំណាងចាស់ៗ ... )
         const PlusIcon = () => (
           <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v12m6-6H6" />
@@ -139,7 +138,7 @@
                     if (admin.username === username && admin.password === password) {
                       onLogin({ name: admin.username, role: 'admin' });
                       setLoading(false);
-                      return;
+                      return; 
                     }
                   }
                 }
@@ -201,7 +200,6 @@
                   ចូលប្រព័ន្ធ
                 </h1>
                 <form onSubmit={handleSubmit} className="space-y-4">
-                  {/* ... (Input ឈ្មោះគណនី មិនផ្លាស់ប្ដូរ) ... */}
                   <div>
                     <label className="block text-sm font-semibold text-gray-700 mb-1">ឈ្មោះគណនី</label>
                     <div className="relative">
@@ -219,7 +217,6 @@
                     </div>
                   </div>
                   
-                  {/* ... (ប្រអប់ Password មិនផ្លាស់ប្ដូរ) ... */}
                   <div>
                     <label className="block text-sm font-semibold text-gray-700 mb-1">ពាក្យសម្ងាត់</label>
                     <div className="relative">
@@ -247,7 +244,6 @@
                     <p className="text-red-500 text-sm text-center">{error}</p>
                   )}
                   
-                  {/* ... (ប៊ូតុង Login មិនផ្លាស់ប្ដូរ) ... */}
                   <button
                     type="submit"
                     className={`w-full flex items-center justify-center space-x-2 bg-blue-600 text-white px-6 py-3 rounded-md hover:bg-blue-700 transition duration-200 font-semibold ${loading ? 'opacity-50 cursor-not-allowed' : ''}`}
@@ -270,7 +266,6 @@
         
         // --- Component: AddLinkForm ---
         function AddLinkForm({ authorId, onAddLink, canAddLink }) {
-          // ... (កូដមិនផ្លាស់ប្ដូរ) ...
           const [title, setTitle] = useState('');
           const [url, setUrl] = useState('');
 
@@ -328,7 +323,6 @@
         
         // --- Component ថ្មី: LinkItem (សម្រាប់ Edit Link) ---
         function LinkItem({ authorId, link, linkId, canEdit, canDelete, onUpdateLink, onDeleteLink }) {
-          // ... (កូដមិនផ្លាស់ប្ដូរ) ...
           const [isEditing, setIsEditing] = useState(false);
           const [editTitle, setEditTitle] = useState(link.title);
           const [editUrl, setEditUrl] = useState(link.url);
@@ -446,6 +440,8 @@
           }
           
           const isBlocked = author.isBlocked || false;
+          // [FIX] បន្ថែម State ថ្មី សម្រាប់ isLoggedIn
+          const isLoggedIn = author.isLoggedIn || false;
 
           const sortedLinks = Object.keys(links)
             .map(key => ({ id: key, ...links[key] }))
@@ -482,7 +478,6 @@
 
           return (
             <div className={`bg-white p-5 rounded-xl shadow-lg border border-gray-200 mb-6 transition-all duration-300 ${isBlocked ? 'opacity-50 bg-gray-100' : ''}`}>
-              {/* ... (UI កែសម្រួលឈ្មោះ មិនផ្លាស់ប្ដូរ) ... */}
               <div className="flex justify-between items-center mb-4">
                 {isEditing && userRole === 'admin' ? (
                   <div className="flex-grow flex items-center space-x-2">
@@ -516,13 +511,20 @@
                 )}
               </div>
               
-              {/* [FIX] UI Admin Permissions (កែសម្រួលសម្រាប់ Mobile) */}
+              {/* [FIX] បន្ថែម UI សម្រាប់ Status (Admin តែប៉ុណ្ណោះ) */}
+              {userRole === 'admin' && (
+                <div className="flex items-center space-x-2 mb-4">
+                  <span className={`h-3 w-3 rounded-full ${isLoggedIn ? 'bg-green-500' : 'bg-gray-400'}`}></span>
+                  <span className="text-sm font-medium text-gray-600">
+                    ស្ថានភាព៖ {isLoggedIn ? <span className="text-green-600">សកម្ម (Active)</span> : 'អសកម្ម (Offline)'}
+                  </span>
+                </div>
+              )}
+              
               {userRole === 'admin' && (
                 <div className="space-y-3 mb-4 p-4 border border-gray-200 rounded-lg bg-gray-50">
-                  {/* Password */}
                   <div>
                     {isSettingPassword ? (
-                      // [FIX] កែ layout សម្រាប់ mobile
                       <div className="flex flex-col sm:flex-row items-stretch sm:items-center sm:space-x-2 space-y-2 sm:space-y-0">
                         <KeyIcon className="hidden sm:block" />
                         <div className="relative flex-grow">
@@ -552,7 +554,6 @@
                     )}
                   </div>
                   
-                  {/* Block Account */}
                   <div className="flex items-center justify-between p-2 bg-red-50 rounded-md">
                     <label htmlFor={`block-${authorId}`} className="font-semibold text-red-700">បិទគណនី (Block User)</label>
                     <div className="relative inline-block w-10 mr-2 align-middle select-none transition duration-200 ease-in">
@@ -571,10 +572,8 @@
                     </div>
                   </div>
                   
-                  {/* Other Permissions */}
                   <div className="space-y-1">
                       <h4 className="font-semibold text-gray-700">កំណត់សិទ្ធិ (Permissions)</h4>
-                      {/* [FIX] កែ layout សម្រាប់ mobile */}
                       <div className="flex flex-col sm:flex-row sm:items-center sm:space-x-4 space-y-2 sm:space-y-0 items-start">
                         <label className="flex items-center space-x-2">
                             <input type="checkbox" className="h-5 w-5" checked={perms.canAddLink} onChange={(e) => handlePermissionChange('canAddLink', e.target.checked)} />
@@ -667,7 +666,6 @@
             };
           }, [user, onLogout]);
 
-          // ... (Functions ផ្សេងទៀត មិនផ្លាស់ប្ដូរ) ...
           const handleAddAuthor = (e) => {
             e.preventDefault();
             if (!newAuthorName.trim() || !newAuthorPassword.trim()) {
@@ -730,7 +728,6 @@
             const authorRef = db.ref(`authors/${authorId}`);
             authorRef.update(permUpdates).catch((error) => console.error("Error updating permissions: ", error));
           };
-          // ---
           
           const authorIds = Object.keys(authors);
 
@@ -738,7 +735,6 @@
             <div className="min-h-screen p-4 sm:p-8">
               <div className="max-w-5xl mx-auto">
                 
-                {/* ... (Header មិនផ្លាស់ប្ដូរ) ... */}
                 <header className="flex justify-between items-center mb-6">
                   <div>
                     <h2 className="text-xl font-semibold text-gray-700">ស្វាគមន៍, <span className="font-bold text-indigo-700">{user.name}</span>!</h2>
@@ -760,7 +756,6 @@
                     កម្មវិធីគ្រប់គ្រងតំណគេហទំព័រ
                   </h1>
                   
-                  {/* ... (Form បន្ថែម Author មិនផ្លាស់ប្ដូរ) ... */}
                   {user.role === 'admin' && (
                     <form onSubmit={handleAddAuthor} className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-10 p-4 bg-gray-100 rounded-lg">
                       <input
@@ -797,7 +792,6 @@
                     </form>
                   )}
 
-                  {/* ... (UI បង្ហាញ List មិនផ្លាស់ប្ដូរ) ... */}
                   <div>
                     {loading && <p className="text-center text-gray-500 text-lg">កំពុងទាញយកទិន្នន័យ...</p>}
                     
@@ -830,7 +824,6 @@
                 </div>
               </div>
 
-              {/* ... (Footer មិនផ្លាស់ប្ដូរ) ... */}
               <footer className="sm:hidden fixed bottom-0 left-0 w-full bg-indigo-700 text-white p-4 text-center shadow-lg-top">
                 <p className="font-semibold">កម្មវិធីគ្រប់គ្រងតំណគេហទំព័រ</p>
               </footer>
@@ -840,7 +833,6 @@
         
         // --- Component: MainApp (បានកែប្រែ) ---
         function MainApp() {
-          // [FIX] កែ State ឱ្យអានពី localStorage មុន
           const [loggedInUser, setLoggedInUser] = useState(() => {
             try {
               const savedUser = localStorage.getItem('loggedInUser');
@@ -854,31 +846,25 @@
             return null;
           });
 
-          // [FIX] បន្ថែម useEffect សម្រាប់គ្រប់គ្រង Presence
           useEffect(() => {
             let userPresenceRef = null;
             
             if (loggedInUser && loggedInUser.role === 'user') {
-              // 1. កំណត់ Ref
               userPresenceRef = db.ref(`authors/${loggedInUser.id}/isLoggedIn`);
               
-              // 2. កំណត់ onDisconnect (ពេលបិទ Browser)
               userPresenceRef.onDisconnect().set(false)
                 .then(() => {
-                    // 3. បន្ទាប់ពី onDisconnect រួចរាល់, កំណត់ Online
                     userPresenceRef.set(true);
                 });
             }
 
-            // 4. Cleanup function (ពេល Logout)
             return () => {
               if (userPresenceRef) {
-                userPresenceRef.onDisconnect().cancel(); // លុប onDisconnect
+                userPresenceRef.onDisconnect().cancel();
               }
             };
-          }, [loggedInUser]); // Run តែពេល loggedInUser ផ្លាស់ប្ដូរ
+          }, [loggedInUser]);
 
-          // [FIX] កែ handleLogin ឱ្យរក្សាទុកក្នុង localStorage
           const handleLogin = (user) => {
             try {
               localStorage.setItem('loggedInUser', JSON.stringify(user));
@@ -886,10 +872,8 @@
               console.error("Failed to save user to localStorage", e);
             }
             setLoggedInUser(user);
-            // (useEffect ខាងលើ នឹងរត់ដោយស្វ័យប្រវត្តិ)
           };
 
-          // [FIX] កែ handleLogout ឱ្យលុបចេញពី localStorage
           const handleLogout = () => {
             try {
               localStorage.removeItem('loggedInUser');
@@ -903,7 +887,7 @@
               userPresenceRef.onDisconnect().cancel();
               
               userPresenceRef.set(false)
-                .finally(() => { // ប្រើ finally ធានាថា Logout
+                .finally(() => {
                   setLoggedInUser(null);
                 });
             } else {
